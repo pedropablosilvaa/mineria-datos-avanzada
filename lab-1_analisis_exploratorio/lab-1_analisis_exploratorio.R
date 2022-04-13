@@ -11,6 +11,8 @@ library("tidyverse")
 library("hrbrthemes")
 # model-based clustering
 library("mclust")
+# correlation plot
+library(corrplot)
 
 #--------------------------------------------------------------------
 #--------------------- Análisis exploratorio ------------------------
@@ -72,6 +74,17 @@ for (value in numcerical_var)
 }
 
 
+corr_plot = cor(data)
+head(round(corr_plot,2))
+
+# visualizing correlogram
+# as circle
+corrplot(corr_plot, method="pie")
+
+
+
+
+
 #--------------------------------------------------------------------
 #--------------------------- Clustering  ----------------------------
 #--------------------------------------------------------------------
@@ -83,18 +96,18 @@ summary(mod1)
 mod2 = Mclust(data[,1:7], G = 3)  #Numero de grupos = 3.
 summary(mod2, parameters = TRUE)
 
-mod6 = Mclust(iris[,1:4], prior = priorControl(functionName="defaultPrior", shrinkage=0.1), modelNames ="EII")  
+mod6 = Mclust(data[,1:7], prior = priorControl(functionName="defaultPrior", shrinkage=0.1), modelNames ="EII")  
 #"EII" = spherical, equal volume # Using prior #The function priorControl is used to specify a conjugate prior for EM within MCLUST. 
 summary(mod6,parameter = TRUE)
 plot(mod6, what = "classification")
 
-class<-iris$Species
+class<-data$Species
 
-BIC<-mclustBIC(iris[,1:4], prior = priorControl(functionName="defaultPrior", shrinkage=0.1))
+BIC<-mclustBIC(data[,1:7], prior = priorControl(functionName="defaultPrior", shrinkage=0.1))
 plot(BIC)  #se grafican los BIC por configuración de parámetros
 summary(BIC)  # se presentan los mejores valores BIC
 
-mod11=Mclust(iris[,1:4],x=BIC) # en base al mejor valor BIC se realiza el mclust
+mod11=Mclust(data[,1:7],x=BIC) # en base al mejor valor BIC se realiza el mclust
 summary(mod11)#se muestra resultado y tabla de clustering
 
 
