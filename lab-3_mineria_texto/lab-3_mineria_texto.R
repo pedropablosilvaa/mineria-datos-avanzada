@@ -17,7 +17,10 @@ library("SnowballC")
 library("wordcloud")
 library("stringi")
 library("caret")
-
+library("bnlearn")
+library('dplyr')
+library("data.table")
+library("stringr")
 
 #--------------------------------------------------------------------
 #-------------------------- Carga de datos   ------------------------
@@ -34,6 +37,8 @@ data_path = file.path(getwd(),
 
 #data_path
 data = read.csv(data_path,  encoding = "UTF-8", stringsAsFactors=FALSE)
+aggregate(data(count = Freshness), list(value = Freshness), length)
+
 data = subset(data, stri_enc_isascii(data$Review))
 
 ggplot(data, aes(x = Freshness)) +
@@ -118,24 +123,68 @@ example <- confusionMatrix(data=as.factor(predicted), reference = as.factor(fres
 #------------------ Dataset Completo - Experimento 2  ---------------
 
 
+
+data_2 = data
+
+data_2$Review<-gsub("movie","",as.character(data_2$Review))
+
+data_2$Review<-gsub("film","",as.character(data_2$Review))
+
+
+
+
+
+corpus = Corpus(VectorSource(data_2$Review[1:40000]))
+#print(corpus)
+#summary(corpus)
+#inspect(corpus[1])
+#corpus[[1]]$content
+for (i in 1:10) print (corpus[[i]]$content)
+corpus = tm_map(corpus, 
+                content_transformer(removePunctuation))
+
+corpus = tm_map(corpus, 
+                content_transformer(removeWords),
+                stopwords("english"))
+
+corpus = tm_map(corpus,
+                content_transformer(tolower))
+
+corpus = tm_map(corpus, 
+                content_transformer(removeWords), 
+                stopwords("english"))
+
+corpus = tm_map(corpus, stemDocument)
+
+corpus = tm_map(corpus, stripWhitespace) 
+
+corpus = tm_map(corpus, content_transformer(removeNumbers))
+
+
+matrix = DocumentTermMatrix(corpus)
+sparse = as.compressed.matrix(matrix)
+
+
+
+
 f_2 = tune.maxent(sparse[1:30000,],
-                data$Freshness[1:30000],
-                nfold=5,
+                data_2$Freshness[1:30000],
+                nfold=3,
                 showall=TRUE,
                 verbose=TRUE)
 print(f_2)
 
 model_2 = maxent(sparse[1:30000,],
-               data$Freshness[1:30000], 
+                data_2$Freshness[1:30000], 
                l1_regularizer=0,
                l2_regularizer=1.0, 
                use_sgd=FALSE, 
                set_heldout=0, 
                verbose=TRUE)
 
-results = predict(model,sparse[30001:40000,]) 
+results = predict(model_2,sparse[30001:40000,]) 
 
-freshness_list = data$Freshness[30001:40000]
+freshness_list = data_2$Freshness[30001:40000]
 
 predicted = results[,1]
 
