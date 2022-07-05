@@ -58,6 +58,7 @@ print(ranking)
 
 
 #------------------------- Dataset completo   -----------------------
+attach(data)
 
 x <- subset(data, select = -type)
 y <- type
@@ -75,6 +76,7 @@ pred <- predict(obj$best.model, x)
 table(pred, type)
 
 # kernel radial
+set.seed(40)
 obj <- tune(svm, type~., data = data, kernel = "radial", ranges = list(gamma = 2^(-4:8), cost = 2^(-3:6), tunecontrol = tune.control(sampling = "cross", cross = 2 )))
 summary(obj)
 plot(obj$gamma)
@@ -82,7 +84,7 @@ plot(obj$gamma)
 pred <- predict(obj$best.model, x)
 table(pred, type)
 
-
+#700x400 image
 
 #------------------------- Dataset editado   -----------------------
 
@@ -90,7 +92,8 @@ table(pred, type)
 data_edited = data[,c('area','l_kernel', 'l_groove','type')]
 
 # kernel lineal
-obj <- tune(svm, type~., data = data_edited, kernel = "linear",ranges = list(cost = 2^(-3:6)), tunecontrol = tune.control(sampling = "cross", cross = 2 ))
+set.seed(40)
+obj <- tune(svm, type~., data = data_edited, kernel = "linear",ranges = list(cost = 2^(-3:8)), tunecontrol = tune.control(sampling = "cross", cross = 2 ))
 summary(obj)
 plot(obj)
 
@@ -99,6 +102,7 @@ table(pred, type)
 
 
 # kernel radial
+set.seed(40)
 obj <- tune(svm, type~., data = data_edited, kernel = "radial", ranges = list(gamma = 2^(-4:8), cost = 2^(-3:6), tunecontrol = tune.control(sampling = "cross", cross = 2 )))
 summary(obj)
 pred <- predict(obj$best.model, x)
@@ -130,7 +134,7 @@ table(pred, type)
 
 
 
-attach(data)
+
 
 x <- subset(data, select = -type)
 y <- type
