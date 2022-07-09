@@ -38,14 +38,14 @@ retardos_multi <- function(
     
     lag.order <- lags[[colname]]
     columns[[colname]] <- signal.uni[lag.mat[, 1], colname]
-    if(!is.null(lag.order) && lag.order > 0)
+    if(!is.null(lag.order) && lag.order > 0){
       for(i in 1:lag.order){
         new.colname <- paste(colname, paste0("lag", i), sep = ".")
         lagged.columns.names <- c(lagged.columns.names, new.colname)
         columns[[new.colname]] <- signal.uni[lag.mat[, i+1], colname]
       }
     
-    
+    }
     
   }
   folded.signal <- data.frame(columns)
@@ -67,6 +67,7 @@ split_df_in_half <- function(df) {
 #Funcion para obtener entrenar y testear modelos considerando una grilla de hiperparametros
 generate_model <- function(train_df, test_df, parameters){
   start_time <- Sys.time()
+  print(start_time)
   salida <- (c( foreach(i = 1:nrow(parameters),  combine = rbind, .inorder = FALSE) %dopar% {
     c <- parameters[i, ]$cost
     n <- parameters[i, ]$nu
@@ -110,7 +111,7 @@ generate_model <- function(train_df, test_df, parameters){
   
   #write.csv(df_resultados, name_df, row.names = FALSE)
   end_time <- Sys.time()
-  end_time - start_time
+  print(end_time - start_time)
   return(df_resultados)
   
   
@@ -121,7 +122,7 @@ generate_model <- function(train_df, test_df, parameters){
 
 autoregulacion <- function(best_results_df){
   start_time <- Sys.time()
-  for (i in 1:1){
+  for (i in 1:200){
     
     PAMn<-(data_1$PAM-min(data_1$PAM))/(max(data_1$PAM)-min(data_1$PAM))
     VFSCn<-(data_1$VFSC-min(data_1$VFSC))/(max(data_1$VFSC)-min(data_1$VFSC))
@@ -147,7 +148,7 @@ autoregulacion <- function(best_results_df){
     stepResponse <- predict(mejorModelo, x ) 
     plot(stepTime,retDatos$PAMn,type="l", col="red")
     lines(stepTime,stepResponse, col = "blue")
-    legend("topright", c("Escalon de presión", "respuesta al escalón"), title = "autorregulación", pch = 1, col=c("red","blue"),lty=c(1,1),inset = 0.01, cex=0.7)
+    legend("topright", c("Escalon de presión", "respuesta al escalón"), title = "autorregulación", pch = 1, col=c("red","blue"),lty=c(1,1))
     print(paste("corr=",best_results_df[i,5]))
     readline(prompt="Press [enter] to continue")
   }
@@ -158,9 +159,19 @@ autoregulacion <- function(best_results_df){
   
 }
 
+# constantes
+
+Ts=0.2
+Tiempo=seq(Ts,(length(VFSC))*Ts,Ts) 
 
 
-
+#se define el numero de nucleos
+registerDoParallel(cores = 8)
+#se definen los parametros de la grilla
+cost <- 2^seq(-4, 12, 1)
+nu <- seq(0.1, 0.9, 0.1)
+gamma<-2^seq(-6, 12, 1)
+lagsList<-seq(1,5,1)
 
 
 #--------------------------------------------------------------------
@@ -195,72 +206,13 @@ data_2
 anyNA(data_1)
 anyNA(data_2)
 
+wd_path = dirname(getSourceEditorContext()$path)
+setwd(wd_path)
+
 
 #--------------------------------------------------------------------
 #------------------------  Paciente A -------------------------------
 #--------------------------------------------------------------------
-
-#attach(data_1)
-# se crea el array de tiempo
-#Ts=0.2
-#Tiempo=seq(Ts,(length(VFSC))*Ts,Ts)
-#formula del modelo
-#formula=VFSC ~ PAM
-#aplicacion del modelos sobre los datos
-#model <- svm(formula , data_1)
-# Se predice sobre el modelo anterior
-#VFSC_estimated <- predict(model, PAM)
-# se calcula una eficiencia a partir de la correlacion de pearson 
-# entre lo estimado y los valores reales (obvio esto esta mal)
-#eficiencia<-cor(VFSC_estimated,VFSC,method = "pearson")
-# Se plotea la prediccion (estimado) y tambien los valores reales.
-#plot(Tiempo,VFSC,type="l")
-#lines(Tiempo,VFSC_estimated, col = "red")
-#legend("topright",
-#       c("VFSC","VFSC_estimated"),
-#       title = paste("Corr=",round(eficiencia,digits=5)),
-#       pch = 1,
-#       col=c("black","red"),
-#       lty=c(2,1),
-#       inset = 0.01
-#       )
-
-
-# se busca una sintonizacion de los hiperparametros
-#tuneResult <- tune(svm, 
-#                   formula,  
-#                   data = data_1,
-#                   ranges = list(nu = seq(0.1,0.9,0.1),
-#                                 cost = 2^(-4:4),
-#                                 type="nu-regression")
-#                   )
-# se establece el mejor modelo
-#tunedModel <- tuneResult$best.model
-# se predice ahora con este mejor modelo utilizando los datos de PAM
-#VFSC_tunedModel <- predict(tunedModel, PAM)
-# se calcula la eficiencia pero ahora para el modelo que utilizo hiperparametros
-#eficienciaTuned<-cor(VFSC_tunedModel,VFSC,method = "pearson")
-
-#plot(Tiempo,VFSC,type="l")
-#lines(Tiempo,VFSC_estimated, col = "red")
-#lines(Tiempo,VFSC_tunedModel, col = "blue")
-#legend("topright",
-#       c("VFSC",
-#         paste("VFSC_estimated corr=",
-#               round(eficiencia,5)),
-         #         paste("VFSC_Tuned corr",
-               #               round(eficienciaTuned,
-                     #                     5))),
-#       title = "Correlacion", 
-#       pch = 1,
-#       col=c("black","red","blue"),
-#       lty=c(2,1),
-#       inset = 0.01)
-
-
-
-#-----------  Ahora utilizando retardos -------------------
-
 
 
 
@@ -276,13 +228,7 @@ attach(data_1)
 #formula del modelo
 formula=VFSC ~ PAM
 
-#se define el numero de nucleos
-registerDoParallel(cores = 8)
-#se definen los parametros de la grilla
-cost <- 2^seq(10, 13, 1)
-nu <- seq(0.6, 0.8, 0.1)
-gamma<-2^seq(-7, -5, 1)
-lagsList<-seq(1,5,1)
+
 #se cargan los parametros de la grilla
 parms <- expand.grid(lagsList=lagsList, cost = cost, nu = nu, gamma=gamma)
 
@@ -311,13 +257,14 @@ data_1_B =tail(data_1_n, length)
 #costo -> ok
 #nu -> 
 model_train_data_1A = generate_model(data_1_A, data_1_B, parms)
-write.csv(model_train_data_1A, './lab-6_svr/output/train_1A.csv', row.names = FALSE)
+#8:37PM start
+write.csv(model_train_data_1A, './output_pedro/train_1A.csv', row.names = FALSE)
 
 
 
 
 model_train_data_1B = generate_model(data_1_B, data_1_A, parms)
-write.csv(model_train_data_1B, './lab-6_svr/output/train_1B.csv', row.names = FALSE)
+write.csv(model_train_data_1B, './output/train_1B_refine.csv', row.names = FALSE)
 
 
 
@@ -332,6 +279,7 @@ inverseStep[(150/Ts):(300/Ts),1]=0
 autoregulacion(model_train_data_1A)
 
 autoregulacion(model_train_data_1B)
+
 
 #paciente1_trainA
 
@@ -372,84 +320,206 @@ data_2_B =tail(data_2_n, length)
 #data_1_n
 
 #se definen los parametros de la grilla
-cost <- 2^seq(-5, -3, 1)
-nu <- seq(0.1, 0.3, 0.1)
-gamma<-2^seq(-8, -4, 1)
-lagsList<-seq(1,5,1)
+#cost <- 2^seq(-5, -3, 1)
+#nu <- seq(0.1, 0.3, 0.1)
+#gamma<-2^seq(-8, -4, 1)
+#lagsList<-seq(1,5,1)
 #se cargan los parametros de la grilla
 parms <- expand.grid(lagsList=lagsList, cost = cost, nu = nu, gamma=gamma)
 
 
 model_train_data_2A = generate_model(data_2_A, data_2_B, parms)
-write.csv(model_train_data_2A, './lab-6_svr/output/train_2A.csv', row.names = FALSE)
+Sys.time()
+write.csv(model_train_data_2A, './output/train_2A_refine.csv', row.names = FALSE)
 
 
 
-
-#se definen los parametros de la grilla
-cost <- 2^seq(-15, -13, 1)
-nu <- seq(0.01, 0.1, 0.05)
-gamma<-2^seq(-4, 12, 2)
-lagsList<-seq(1,5,1)
-
-
-
-cost <- 2^seq(-4, 12, 2)
-nu <- seq(0.1, 0.3, 0.1)
-gamma<-2^seq(-4, 12, 2)
-lagsList<-seq(1,5,1)
-#se cargan los parametros de la grilla
-parms <- expand.grid(lagsList=lagsList, cost = cost, nu = nu, gamma=gamma)
-
-
-model_train_data_2B_ = generate_model(data_2_B, data_2_A, parms)
-
-  write.csv(model_train_data_2B, './lab-6_svr/output/train_2B.csv', row.names = FALSE)
-
-
-
-
-autoregulacion(model_train_data_2A)
-
-autoregulacion(model_train_data_2B)
+model_train_data_2B = generate_model(data_2_B, data_2_A, parms)
+Sys.time()
+write.csv(model_train_data_2B, './output/train_2B_refine.csv', row.names = FALSE)
 
 
 
 
 
 
-
-
-#---------------------- Figura ----------------------
-
+#-----------------------------------------------------------------------
+#---------------------- extraccion de informacion  ----------------------
+#-----------------------------------------------------------------------
 # Paciente 1
 
-plot(Tiempo,data_1$PAM, type="l", col = "black", ylim=range( c(data_1$PAM, data_1$VFSC) ))
-lines(Tiempo, data_1$VFSC,  col = "red")
-legend("right",
-      col=c("black","red"),
-       legend = c("VFSC","PAM"),
-       title = "Datos Paciente 1",
-       pch = 1,
-       
-       lty=c(2,1),
-       inset = 0.01
-       )
+
+best_model_1 <- read.csv("./output/train_1B_refine.csv")
+#best_model_1 <- best_model_1[order(best_model_1[,5], decreasing = TRUE),]
+#test_best_model_1 <- best_model_1[best_model_1$corr_pred > 0.35, ]
+
+PAMn <- (data_1$PAM-min(data_1$PAM))/(max(data_1$PAM)-min(data_1$PAM))
+VFSCn <- (data_1$VFSC-min(data_1$VFSC))/(max(data_1$VFSC)-min(data_1$VFSC))
+data_1_n <- data.frame(PAMn,VFSCn)
+
+
+lag<-list(PAMn = best_model_1[5,1],VFSCn = 0)
+signal.train <- retardos_multi(data_1_n, lag)
+retDatos=signal.train$folded.signal
+
+x=subset(retDatos, select = -VFSCn)
+y=retDatos$VFSCn
+
+best_svm_1 <- svm(x, y, kernel = "radial",type = "nu-regression", cost = best_model_1[5,2],
+                        nu = best_model_1[5,3], gamma=best_model_1[5,4])
+
+print(best_svm_1)
+
+inverseStep=matrix(1,(300/Ts),1)
+inverseStep[(150/Ts):(300/Ts),1]=0
+
+PAMn=inverseStep
+VFSCn=inverseStep 
+
+data <- data.frame(PAMn, VFSCn)
+lag <- list(PAMn = best_model_1[5,1],VFSCn = 0)
+
+signal.train <- retardos_multi(data, lag)
+
+retDatos = signal.train$folded.signal
+x = subset(retDatos, select = -VFSCn)
+
+
+stepTime=seq(Ts,(length(retDatos$PAMn))*Ts,Ts)
+
+stepResponse <- predict(best_svm_1, x)
+
+plot(stepTime,retDatos$PAMn,type="l", col="red")
+lines(stepTime,stepResponse, col = "blue")
+legend("topright", 
+       c("Escalon de presión", 
+        "respuesta al escalon"), 
+       title = "autorregulacion", 
+       pch = 1, 
+       col=c("red","blue"),
+       lty=c(1,1),
+       inset = 0.01,
+       cex = 0.7)
+
+#----------------
+
+formula <- data_1$VFSC ~ data_1$PAM
+
+best_model_1_unnormalized <- svm(formula, data_1, kernel = "radial",type = "nu-regression", cost = best_model_1[5,2],
+                                      nu = best_model_1[5,3], gamma=best_model_1[5,4])
+
+VFSC_tunedModel <- predict(best_model_1_unnormalized, data_1$PAM)
+
+plot(Tiempo, data_1$VFSC, type="l", col = "blue")
+lines(Tiempo, VFSC_tunedModel, col = "red")
+legend("topright", c("VFSC","VFSC_estimated"), col = c("blue", "red"),
+       title = "VFSC vs VFSC estimado",  lty=1:2, cex=0.5)
+
+
+
+#-----------------------------------
+
+
+
+#plot(Tiempo,data_1$PAM, type="l", col = "black", ylim=range( c(data_1$PAM, data_1$VFSC) ))
+#lines(Tiempo, data_1$VFSC,  col = "red")
+#legend("right",
+#      col=c("black","red"),
+#       legend = c("VFSC","PAM"),
+#       title = "Datos Paciente 1",
+#       pch = 1,
+#       
+#       lty=c(2,1),
+#       inset = 0.01
+#       )
 
 
 
 
-
+#-----------------------------------------------------------------------
+#---------------------- extraccion de informacion  ----------------------
+#-----------------------------------------------------------------------
 # Paciente 2
 
-plot(Tiempo,data_2$PAM, type="l", col = "black", ylim=range( c(data_2$PAM, data_2$VFSC) ))
-lines(Tiempo, data_2$VFSC,  col = "red")
-legend("right",
-       col=c("black","red"),
-       legend = c("VFSC","PAM"),
-       title = "Datos Paciente 2",
-       pch = 1,
-       
-       lty=c(2,1),
-       inset = 0.01
-)
+
+
+best_model_2 <- read.csv("./output/train_2A_refine.csv")
+
+PAMn <- (data_2$PAM-min(data_2$PAM))/(max(data_2$PAM)-min(data_2$PAM))
+VFSCn <- (data_2$VFSC-min(data_2$VFSC))/(max(data_2$VFSC)-min(data_2$VFSC))
+
+data_2_n <- data.frame(PAMn,VFSCn)
+
+lag<-list(PAMn = best_model_2[5,1],VFSCn = 0)
+signal.train <- retardos_multi(data_2_n, lag)
+retDatos=signal.train$folded.signal
+
+x=subset(retDatos, select = -VFSCn)
+y=retDatos$VFSCn
+
+best_svm_2 <- svm(x, y, kernel = "radial",type = "nu-regression", cost = best_model_2[5,2],
+                  nu = best_model_2[5,3], gamma=best_model_2[5,4])
+
+print(best_svm_2)
+
+inverseStep=matrix(1,(300/Ts),1)
+inverseStep[(150/Ts):(300/Ts),1]=0
+
+PAMn=inverseStep
+VFSCn=inverseStep 
+
+data <- data.frame(PAMn, VFSCn)
+lag <- list(PAMn = best_model_2[5,1],VFSCn = 0)
+
+signal.train <- retardos_multi(data, lag)
+
+retDatos = signal.train$folded.signal
+x = subset(retDatos, select = -VFSCn)
+
+
+stepTime=seq(Ts,(length(retDatos$PAMn))*Ts,Ts)
+
+stepResponse <- predict(best_svm_2, x)
+
+plot(stepTime,retDatos$PAMn,type="l", col="red")
+lines(stepTime,stepResponse, col = "blue")
+legend("topright", 
+       c("Escalon de presión", 
+         "Respuesta al escalón"), 
+       title = "Autorregulación", 
+       pch = 1, 
+       col=c("red","blue"),
+       lty=c(1,1),
+       inset = 0.01,
+       cex = 0.7)
+
+#----------------
+
+formula <- data_2$VFSC ~ data_2$PAM
+
+best_model_2_unnormalized <- svm(formula, data_2, kernel = "radial",type = "nu-regression", cost = best_model_2[5,2],
+                                 nu = best_model_2[5,3], gamma=best_model_2[5,4])
+
+VFSC_tunedModel <- predict(best_model_2_unnormalized, data_2$PAM)
+
+plot(Tiempo, data_2$VFSC, type="l", col = "blue")
+lines(Tiempo, VFSC_tunedModel, col = "red")
+legend("topright", c("VFSC","VFSC_estimated"), col = c("blue", "red"),
+       title = "VFSC vs VFSC estimado",  lty=1:2, cex=0.5)
+
+
+
+
+#plot(Tiempo,data_2$PAM, type="l", col = "black", ylim=range( c(data_2$PAM, data_2$VFSC) ))
+#lines(Tiempo, data_2$VFSC,  col = "red")
+#legend("right",
+#       col=c("black","red"),
+#       legend = c("VFSC","PAM"),
+#       title = "Datos Paciente 2",
+#       pch = 1,
+#       
+#       lty=c(2,1),
+#       inset = 0.01
+#)
+
+

@@ -13,6 +13,7 @@ library("hrbrthemes")
 library("mclust")
 # correlation plot
 library(corrplot)
+library(Hmisc)
 
 #--------------------------------------------------------------------
 #--------------------- Análisis exploratorio ------------------------
@@ -44,6 +45,24 @@ column_names_list = c("area",
 colnames(data) = column_names_list 
 
 anyNA(data)
+
+print(summary(data))
+sd(data$area)
+sd(data$perimeter)
+sd(data$compactness)
+sd(data$l_kernel)
+sd(data$w_kernel)
+sd(data$asymmetry)
+sd(data$l_groove)
+
+
+var(data$area)
+var(data$perimeter)
+var(data$compactness)
+var(data$l_kernel)
+var(data$w_kernel)
+var(data$asymmetry)
+var(data$l_groove)
 
 
 # basic histogram
